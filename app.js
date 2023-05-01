@@ -6,9 +6,12 @@ const currentHex = document.querySelectorAll(".color h2");
 const popup = document.querySelector(".copy-container");
 const adjustButtons = document.querySelectorAll(".adjust");
 const closeAdjustments = document.querySelectorAll(".close-adjustment");
+const lockButton = document.querySelectorAll(".lock");
 const sliderContainers = document.querySelectorAll(".sliders");
 
 let initialColors;
+//for local storage
+let savedPalettes = [];
 
 //Event Listeners
 
@@ -45,6 +48,14 @@ closeAdjustments.forEach((button, index) => {
   });
 });
 
+lockButton.forEach((button, index) => {
+  button.addEventListener("click", (e) => {
+    lockLayer(e, index);
+  });
+});
+
+generateBtn.addEventListener("click", randomColors);
+
 //Functions
 //color generator
 function generateHex() {
@@ -57,8 +68,14 @@ function randomColors() {
   colorDivs.forEach((div, index) => {
     const hexText = div.children[0];
     const randomColor = generateHex();
-    //add it to the array
-    initialColors.push(chroma(randomColor).hex());
+
+    if (div.classList.contains("locked")) {
+      initialColors.push(hexText.innerText);
+      return;
+    } else {
+      //add it to the array
+      initialColors.push(chroma(randomColor).hex());
+    }
 
     // add color to background
     div.style.backgroundColor = randomColor;
@@ -75,8 +92,13 @@ function randomColors() {
     const saturation = sliders[2];
     colorizeSliders(color, hue, brightness, saturation);
   });
-
   resetInputs();
+
+  //check for button contrast
+  adjustButtons.forEach((button, index) => {
+    checkTextContrast(initialColors[index], button);
+    checkTextContrast(initialColors[index], lockButton[index]);
+  });
 }
 
 function checkTextContrast(color, text) {
@@ -190,6 +212,77 @@ function openAdjustmentPanel(index) {
 
 function closeAdjustmentPanel(index) {
   sliderContainers[index].classList.toggle("active");
+}
+
+function lockLayer(e, index) {
+  const lockSVG = e.target.children[0];
+  const activeBg = colorDivs[index];
+  activeBg.classList.toggle("locked");
+
+  if (lockSVG.classList.contains("fa-lock-open")) {
+    e.target.innerHTML = '<i class="fas fa-lock"></i>';
+  } else {
+    e.target.innerHTML = '<i class="fas fa-lock-open"></i>';
+  }
+}
+
+//for local storage
+const saveBtn = document.querySelector(".save");
+const submitSave = document.querySelector(".submit-save");
+const closeSave = document.querySelector(".close-save");
+const saveContainer = document.querySelector(".save-container");
+const saveInput = document.querySelector(".save-container input");
+
+//event listeners
+saveBtn.addEventListener("click", openPalette);
+closeSave.addEventListener("click", closePalette);
+submitSave.addEventListener("click", savePalettes);
+
+//functions
+function openPalette() {
+  const popup = saveContainer.children[0];
+  saveContainer.classList.add("active");
+  popup.classList.add("active");
+}
+
+function closePalette(e) {
+  const popup = saveContainer.children[0];
+  saveContainer.classList.remove("active");
+  popup.classList.remove("active");
+}
+
+function savePalettes(e) {
+  const popup = saveContainer.children[0];
+  saveContainer.classList.remove("active");
+  popup.classList.remove("active");
+  const name = saveInput.value;
+
+  const colors = [];
+  currentHex.forEach((hex) => {
+    colors.push(hex.innerText);
+  });
+
+  //generate object
+  let paletteNr = savedPalettes.length;
+  const paletteObj = { name, colors, nr: paletteNr };
+  savedPalettes.push(paletteObj);
+  saveToLocal(paletteObj);
+
+  saveInput.value = "";
+
+  //generate palette for the library
+}
+
+function saveToLocal(paletteObj) {
+  let localPalettes;
+  if (localStorage.getItem("palettes") === null) {
+    localPalettes = [];
+  } else {
+    localPalettes = JSON.parse(localStorage.getItem("palettes"));
+  }
+
+  localPalettes.push(paletteObj);
+  localStorage.setItem("palettes", JSON.stringify(localPalettes));
 }
 
 randomColors();
